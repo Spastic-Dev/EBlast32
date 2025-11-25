@@ -124,7 +124,6 @@ short buttonsettings[btn_max];
 #define YDIM    200
 extern SWBOOL QuitFlag;
 
-void TerminateGame(void);
 void ResetKeys(void);
 
 // GLOBALS ////////////////////////////
@@ -1642,6 +1641,13 @@ MNU_OrderCustom(UserCall call, MenuItem *item)
             " Alex \"pogokeen\" Dawson",
             " Philipp \"Helixhorned\" Kutin",
             " Pierre-Loup \"Plagman\" Griffais",
+            "*Contributors (A-Z)",
+            " Alexey \"Nuke.YKT\" Skrybykin",
+            " Barry \"sirlemonhead\" Duncan",
+            " Dino \"Doom64hunter\" Bollinger",
+            " Fox Martins",
+            " Jordon \"Striker\" Moss",
+            " Yoav \"NY00123\" N.",
             "*Special thanks to",
             " Jonathon \"JonoF\" Fowler",
             "*Uses BUILD Engine technology by",
@@ -1649,12 +1655,6 @@ MNU_OrderCustom(UserCall call, MenuItem *item)
         };
         static const char *text2[] =
         {
-            "*Contributors (A-Z)",
-            " Alexey \"Nuke.YKT\" Skrybykin",
-            " Barry \"sirlemonhead\" Duncan",
-            " Fox Martins",
-            " Jordon \"Striker\" Moss",
-            " NY00123",
             "*Additional thanks to (A-Z)",
             " Ben \"ProAsm\" Smit",
             " Charlie Wiederhold",
@@ -1662,6 +1662,7 @@ MNU_OrderCustom(UserCall call, MenuItem *item)
             " Mitchell \"mjr4077au\" Richters",
             " Par \"Parkar\" Karlsson", // "Pär \"Parkar\" Karlsson",
             " Sergei Shubin",
+            " \"tmyqlfpir\"",
             "-",
             " This program is distributed under the terms of the",
             " GNU General Public License version 2 as published by the",
@@ -4085,13 +4086,8 @@ MNU_ItemPostProcess(MenuGroup *group)
 static void
 MNU_DownLevel(MenuGroup *group)
 {
-
     if (!group)
-    {
-        TerminateGame();
-        printf("MNU_DownLevel() - NULL card\n");
-        exit(0);
-    }
+        TerminateWithSimpleMsg(0, "MNU_DownLevel() - NULL card");
 
     MNU_PushGroup(group);
 

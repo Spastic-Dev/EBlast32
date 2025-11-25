@@ -66,9 +66,6 @@ void _Assert(const char *expr, const char *strFile, unsigned uLine);
 #endif
 
 #if DEBUG
-void HeapCheck(char *, int);
-#define HEAP_CHECK() HeapCheck(__FILE__, __LINE__)
-
 void dsprintf(char *, char *, ...);
 #define DSPRINTF dsprintf
 
@@ -92,7 +89,6 @@ void dsprintf_null(char *str, const char *format, ...);
 #define DSPRINTF dsprintf_null
 //#define DSPRINTF()
 
-#define HEAP_CHECK()
 #define RANDOM_DEBUG 0
 #endif
 
@@ -1279,6 +1275,16 @@ extern PLAYER Player[MAX_SW_PLAYERS_REG+1];
 #define PF2_TELEPORTED        (BIT(0))
 #define PF2_INPUT_CAN_TURN    (BIT(1)) // Allow calling DoPlayerTurn from getinput
 #define PF2_INPUT_CAN_AIM     (BIT(2)) // Allow calling DoPlayerHorizon from getinput
+// Allow conditional weapon auto-switching
+// in multiplayer games without breaking sync.
+#define PF2_INPUT_WEAPON_BIT0 (BIT(3))
+#define PF2_INPUT_WEAPON_BIT1 (BIT(4))
+#define PF2_INPUT_WEAPON_BIT2 (BIT(5))
+#define PF2_INPUT_WEAPON_BIT3 (BIT(6))
+#define PF2_INPUT_WEAPON_MASK (PF2_INPUT_WEAPON_BIT0| \
+                               PF2_INPUT_WEAPON_BIT1| \
+                               PF2_INPUT_WEAPON_BIT2| \
+                               PF2_INPUT_WEAPON_BIT3)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -2314,7 +2320,6 @@ extern void SetFadeAmt(PLAYERp pp, short damage, unsigned char startcolor);
 extern void DoPaletteFlash(PLAYERp pp);
 extern unsigned char palette_data[256][3];
 extern SWBOOL NightVision;
-#endif
 
 int _PlayerSound(const char *file, int line, int num, int *x, int *y, int *z, Voc3D_Flags flags, PLAYERp pp);
 #define PlayerSound(num, x, y, z, flags, pp) _PlayerSound(__FILE__, __LINE__, (num), (x), (y), (z), (flags), (pp))
@@ -2345,6 +2350,24 @@ void COVERsetbrightness(int bright, unsigned char *pal);    // game.c
 void DrawMenuLevelScreen(void); // game.c
 void DebugWriteString(char *string);    // game.c
 void ManualPlayerInsert(PLAYERp pp);    // game.c
+
+template <typename... Args>
+static FORCE_INLINE void
+TerminateWithMsg(int code, const char *fmt, const Args &... args)
+{
+    TerminateGame();
+
+    LOG_F(ERROR, fmt, args...);
+    wm_msgbox(apptitle, fmt, args...);
+
+    exit(code);
+}
+
+static FORCE_INLINE void
+TerminateWithSimpleMsg(int code, const char *msg)
+{
+    TerminateWithMsg(code, "%s", msg);
+}
 
 void SetRedrawScreen(PLAYERp pp);   // border.c
 void SetupAspectRatio(void);    // border.c
@@ -2431,3 +2454,5 @@ extern short QuickLoadNum;
 void LoadSaveMsg(const char *msg);
 SWBOOL DoQuickSave(short save_num);
 SWBOOL DoQuickLoad(void);
+
+#endif

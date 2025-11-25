@@ -2864,11 +2864,9 @@ SpriteSetup(void)
                     TRAVERSE_SPRITE_STAT(headspritestat[STAT_FAF], i, nexti)
                     {
                         if (sprite[i].hitag == sp->hitag && sprite[i].lotag == sp->lotag)
-                        {
-                            TerminateGame();
-                            printf("Two VIEW_THRU_ tags with same match found on level\n1: x %d, y %d \n2: x %d, y %d", TrackerCast(sp->x), TrackerCast(sp->y), TrackerCast(sprite[i].x), TrackerCast(sprite[i].y));
-                            exit(0);
-                        }
+                            TerminateWithMsg(0,
+                              "Two VIEW_THRU_ tags with same match found on level\n1: x %d, y %d \n2: x %d, y %d",
+                              TrackerCast(sp->x), TrackerCast(sp->y), TrackerCast(sprite[i].x), TrackerCast(sprite[i].y));
                     }
                     change_sprite_stat(SpriteNum, STAT_FAF);
                     break;
@@ -4925,13 +4923,11 @@ ActorDrop(short SpriteNum, int x, int y, int z, short new_sector, short min_heig
 
 #if 0
     if (florhit < 0 || ceilhit < 0)
-    {
-        TerminateGame();
-        printf("ERROR: FAFgetzrange() returned -1 for floor or ceiling check.\n");
-        printf("Most likely a sprite has been placed too close to a white wall.\n");
-        printf("spnum %d, sect %d, x %d, y %d, z %d, florhit %d, pic %d\n", SpriteNum, sp->sectnum, sp->x, sp->y, z - DIV2(SPRITEp_SIZE_Z(sp)), florhit, sp->picnum);
-        exit(0);
-    }
+        TerminateWithMsg(0,
+          "ERROR: FAFgetzrange() returned -1 for floor or ceiling check.\n"
+          "Most likely a sprite has been placed too close to a white wall.\n"
+          "spnum %d, sect %d, x %d, y %d, z %d, florhit %d, pic %d",
+          SpriteNum, sp->sectnum, sp->x, sp->y, z - DIV2(SPRITEp_SIZE_Z(sp)), florhit, sp->picnum);
 #else
     if (florhit < 0 || ceilhit < 0)
     {
@@ -5075,7 +5071,7 @@ move_actor(short SpriteNum, int xchange, int ychange, int zchange)
 
         if (ActorDrop(SpriteNum, sp->x, sp->y, sp->z, sp->sectnum, u->lo_step))
         {
-            //printf("cancel move 2\n", sp->z, u->loz);
+            //VLOG_F(LOG_DEBUG, "cancel move 2", sp->z, u->loz);
             // cancel move
             sp->x = x;
             sp->y = y;
@@ -5548,6 +5544,20 @@ struct InventoryDecl_t InventoryDecls[InvDecl_TOTAL] =
     { "Smoke Bomb",               100 },
 };
 
+// Helper function ensuring use of gs.WeaponAutoSwitch is safe in multiplayer.
+// Note that gs.WeaponAutoSwitch is totally ignored if PedanticMode is true.
+static void
+HandleWeaponAutoSwitch(PLAYERp pp, int Weapon)
+{
+    if (!gs.WeaponAutoSwitch && !PedanticMode)
+        return;
+
+    if (CommEnabled && !PedanticMode)
+        SET(pp->Flags2, (Weapon + 1) * PF2_INPUT_WEAPON_BIT0);
+    else
+        DamageData[Weapon].Init(pp);
+}
+
 #define ITEMFLASHAMT  -8
 #define ITEMFLASHCLR  144
 int
@@ -5931,11 +5941,9 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_STAR));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
             if (User[pp->PlayerSprite]->WeaponNum <= WPN_STAR && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
-            InitWeaponStar(pp);
+            HandleWeaponAutoSwitch(pp, WPN_STAR);
             break;
 
         case ICON_LG_MINE:
@@ -5959,11 +5967,9 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_MINE));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
             if (User[pp->PlayerSprite]->WeaponNum > WPN_MINE && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
-            InitWeaponMine(pp);
+            HandleWeaponAutoSwitch(pp, WPN_MINE);
             break;
 
         case ICON_UZI:
@@ -6002,13 +6008,15 @@ KeyMain:
                 ChoosePlayerGetSound(pp);
             }
 
-            if (!gs.WeaponAutoSwitch)
-                break;
-
             if (User[pp->PlayerSprite]->WeaponNum > WPN_UZI && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
 
-            InitWeaponUzi(pp);
+            // gs.WeaponAutoSwitch is not preventing switch from a single uzi to
+            // the double uzi. These checks aim to prevent a case of the second
+            // uzi coming up and then being brought down in multiplayer games.
+            if (PedanticMode || !CommEnabled ||
+                (gs.WeaponAutoSwitch && User[pp->PlayerSprite]->WeaponNum != WPN_UZI))
+                HandleWeaponAutoSwitch(pp, WPN_UZI);
             break;
 
         case ICON_LG_UZI_AMMO:
@@ -6045,11 +6053,9 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_MICRO));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
             if (User[pp->PlayerSprite]->WeaponNum > WPN_MICRO && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
-            InitWeaponMicro(pp);
+            HandleWeaponAutoSwitch(pp, WPN_MICRO);
             break;
 
         case ICON_MICRO_BATTERY:
@@ -6116,11 +6122,9 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_GRENADE));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
             if (User[pp->PlayerSprite]->WeaponNum > WPN_GRENADE && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
-            InitWeaponGrenade(pp);
+            HandleWeaponAutoSwitch(pp, WPN_GRENADE);
             break;
 
         case ICON_LG_GRENADE:
@@ -6145,9 +6149,7 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_ROCKET));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
-            InitWeaponRocket(pp);
+            HandleWeaponAutoSwitch(pp, WPN_ROCKET);
             break;
 
         case ICON_LG_ROCKET:
@@ -6192,11 +6194,9 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_RAIL));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
             if (User[pp->PlayerSprite]->WeaponNum > WPN_RAIL && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
-            InitWeaponRail(pp);
+            HandleWeaponAutoSwitch(pp, WPN_RAIL);
             break;
 
         case ICON_RAIL_AMMO:
@@ -6234,11 +6234,9 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_SHOTGUN));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
             if (User[pp->PlayerSprite]->WeaponNum > WPN_SHOTGUN && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
-            InitWeaponShotgun(pp);
+            HandleWeaponAutoSwitch(pp, WPN_SHOTGUN);
             break;
 
         case ICON_LG_SHOTSHELL:
@@ -6303,11 +6301,9 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_NAPALM) | BIT(WPN_RING) | BIT(WPN_HOTHEAD));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
             if (User[pp->PlayerSprite]->WeaponNum > WPN_HOTHEAD && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
-            InitWeaponHothead(pp);
+            HandleWeaponAutoSwitch(pp, WPN_HOTHEAD);
             break;
 
         case ICON_FIREBALL_LG_AMMO:
@@ -6349,13 +6345,10 @@ KeyMain:
                 break;
             SET(pp->WpnFlags, BIT(WPN_HEART));
 
-            if (!gs.WeaponAutoSwitch)
-                break;
-
             if (User[pp->PlayerSprite]->WeaponNum > WPN_HEART && User[pp->PlayerSprite]->WeaponNum != WPN_SWORD)
                 break;
 
-            InitWeaponHeart(pp);
+            HandleWeaponAutoSwitch(pp, WPN_HEART);
             break;
 
         case ICON_HEART_LG_AMMO:

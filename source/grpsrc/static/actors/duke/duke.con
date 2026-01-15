@@ -1,0 +1,185 @@
+// duke.con - Duke Nukem player class in CONScript style
+// (for hypothetical advanced EDuke32 fork with CONScript support)
+// 2025–2026 era scripting fantasy
+
+actor DukeNukemPlayer
+    inherits PlayerBase
+{
+    // ==================== Basic Properties ====================
+    property
+    {
+        health          100;
+        maxhealth       200;
+        armor           0;
+        maxarmor        200;
+        startsound      "DSPL_PAIN";     // pain sound
+        deathsound      "DSPL_DEATH";
+        jumpheight      420;
+        viewheight      40<<8;
+        viewbobheight   8;
+        viewbobfactor   0.75;
+        runspeed        348;             // classic Duke run speed
+        walkspeed       140;
+        crouchspeed     80;
+    }
+
+    // ==================== Inventory / Weapons ====================
+    inventory
+    {
+        maxammo     PistolAmmo     200;
+        maxammo     ShotgunAmmo    50;
+        maxammo     ChaingunAmmo   9999;
+        maxammo     RPGAmmo        20;
+        maxammo     PipeBombAmmo   20;
+        maxammo     ShrinkerAmmo   50;
+        maxammo     DevastatorAmmo 99;
+        maxammo     TripBombAmmo   10;
+        maxammo     FreezerAmmo    99;
+
+        startamount PistolAmmo     52;
+        startamount ShotgunAmmo    0;
+        startamount ChaingunAmmo   0;
+    }
+
+    defaultweapon   "Pistol";
+
+    // ==================== States ====================
+    state Spawn
+    {
+        PLAY A -1
+        stop;
+    }
+
+    state Pain
+    {
+        PLAY G 8 A_PlaySound("DSPL_PAIN")
+        PLAY GGGGGGGG 4
+        goto Spawn;
+    }
+
+    state Death
+    {
+        PLAY H 8 A_PlaySound("DSPL_DEATH")
+        PLAY IJKLMNO 8
+        PLAY P -1
+        A_DeathDropWeapons();
+        stop;
+    }
+
+    state SmallExplosionDeath
+    {
+        PLAY H 4
+        A_PlaySound("DSPL_SHRINKDEATH")
+        goto Death;
+    }
+
+    // ==================== Movement / Physics States ====================
+    state StandStill
+    {
+        PLAY A 4
+        waituntil !A_IsMoving()
+        goto StandStill
+    }
+
+    state Run
+    {
+        PLAY B 4 A_FootstepSound()
+        PLAY C 4
+        PLAY D 4 A_FootstepSound()
+        PLAY E 4
+        loop;
+    }
+
+    state Jump
+    {
+        PLAY F 6
+        A_Jump(420, 0, 0)
+        waituntil OnGround()
+        goto Spawn
+    }
+
+    state Crouch
+    {
+        PLAY K 4
+        A_SetViewHeight(24<<8)
+        waituntil !A_IsCrouching()
+        A_SetViewHeight(40<<8)
+        goto Spawn
+    }
+
+    // ==================== Weapon Handling ====================
+    state FireWeapon
+    {
+        // Very simplified dispatch
+        switch CurrentWeapon
+        {
+        case Pistol:        goto FirePistol;
+        case Shotgun:       goto FireShotgun;
+        case Chaingun:      goto FireChaingun;
+        case RPG:           goto FireRPG;
+        case PipeBomb:      goto ThrowPipeBomb;
+        case Shrinker:      goto FireShrinker;
+        case Devastator:    goto FireDevastator;
+        case TripBomb:      goto PlaceTripBomb;
+        case Freezer:       goto FireFreezer;
+        default:            goto Spawn;
+        }
+    }
+
+    state FirePistol
+    {
+        PLAY F 4 A_PlaySound("DSPISTOL")
+        A_FireProjectile("PistolBullet", 0, 0, 32, 0, 0)
+        A_GunRecoil(80)
+        wait 12
+        goto Spawn
+    }
+
+    state FireShotgun
+    {
+        PLAY F 4 A_PlaySound("DSSHTGUN")
+        repeat 7
+        {
+            A_FireProjectile("ShotgunPellet", random(-12,12), random(-12,12), 32, 0, 0)
+        }
+        A_GunRecoil(240)
+        wait 24
+        goto Spawn
+    }
+
+    // ... other weapon fire states would follow similar pattern
+
+    // ==================== Event Handlers ====================
+    event OnTakeDamage(damage, source)
+    {
+        if (damage >= health)
+        {
+            if (damage >= 1000 || source == "NuclearExplosion")
+                goto SmallExplosionDeath;
+            else
+                goto Death;
+        }
+
+        A_PlaySound(startsound);
+        A_SpawnBloodSplatter();
+        shakeview 400, 800;
+    }
+
+    event OnWeaponPickup(weapontype)
+    {
+        if (weapontype == "RPG" && !HasWeapon(RPG))
+            A_PlaySound("DSGETRPG");
+        else if (weapontype == "Devastator" && !HasWeapon(Devastator))
+            A_PlaySound("DSGETDEV");
+    }
+
+    event OnRespawn
+    {
+        health = maxhealth;
+        armor = 0;
+        A_ClearInventoryExceptKeys();
+        A_GiveWeapon("Pistol");
+        A_GiveAmmo("PistolAmmo", 52);
+        goto Spawn;
+    }
+}

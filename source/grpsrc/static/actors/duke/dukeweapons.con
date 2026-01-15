@@ -1,0 +1,421 @@
+// dukeweapons.con
+// Duke Nukem 3D weapons defined in hypothetical CONScript style
+// For advanced EDuke32 fork (2025–2026 era scripting)
+// Weapons as actors with states for idle/fire/reload/selection
+
+// ──────────────────────────────────────────────────────────────
+//   Base Weapon Class (shared properties/behaviors)
+// ──────────────────────────────────────────────────────────────
+
+actor WeaponBase
+{
+    property
+    {
+        ammotype       "None";
+        ammoamount     1;
+        clipamount     0;      // for auto-reload weapons
+        firespeed      12;     // tics between shots
+        recoilamount   100;
+        selectpriority 0;      // higher = selected first
+    }
+
+    state Ready
+    {
+        loop;
+    }
+
+    state Fire
+    {
+        // Override in children
+        wait 1;
+        goto Ready;
+    }
+
+    state Reload
+    {
+        // Override in children
+        wait 30;
+        goto Ready;
+    }
+
+    event OnSelect
+    {
+        A_PlaySound("DSSELWEP");
+    }
+
+    event OnDeselect
+    {
+        // Cleanup if needed
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   FIST   (melee punch)
+// ──────────────────────────────────────────────────────────────
+
+actor Fist
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "None";
+        firespeed      8;
+        damage         35;
+        selectpriority 1;
+    }
+
+    state Ready
+    {
+        FIST A 4
+        FIST B 4
+        loop;
+    }
+
+    state Fire
+    {
+        FIST C 6 A_MeleeAttack(35, 64, "FistHit")
+        FIST D 6 A_PlaySound("DSFIST")
+        wait 8;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   MIGHTY FOOT   (kick)
+// ──────────────────────────────────────────────────────────────
+
+actor MightyFoot
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "None";
+        firespeed      10;
+        damage         70;
+        selectpriority 2;
+    }
+
+    state Ready
+    {
+        BOOT A 4
+        loop;
+    }
+
+    state Fire
+    {
+        BOOT B 8 A_MeleeAttack(70, 80, "BootHit", true)  // true = trip enemies
+        BOOT C 6 A_PlaySound("DSBOOT")
+        wait 12;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   PISTOL
+// ──────────────────────────────────────────────────────────────
+
+actor Pistol
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "PistolAmmo";
+        ammoamount     1;
+        clipamount     0;
+        firespeed      12;
+        recoilamount   80;
+        selectpriority 10;
+    }
+
+    state Ready
+    {
+        PIST ABCDEFGHI 2
+        loop;
+    }
+
+    state Fire
+    {
+        PIST J 4 A_FireBullet(10, 8, 512)
+        A_PlaySound("DSPISTOL")
+        A_GunRecoil(80)
+        wait 12;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   SHOTGUN
+// ──────────────────────────────────────────────────────────────
+
+actor Shotgun
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "ShotgunAmmo";
+        ammoamount     1;
+        firespeed      24;
+        recoilamount   240;
+        selectpriority 20;
+    }
+
+    state Ready
+    {
+        SHTG ABCDEFG 2
+        loop;
+    }
+
+    state Fire
+    {
+        SHTG H 4
+        repeat 7
+        {
+            A_FireBullet(12, random(-12,12), 512)
+        }
+        A_PlaySound("DSSHTGUN")
+        A_GunRecoil(240)
+        SHTG I 12
+        wait 24;
+        goto Ready;
+    }
+
+    state Reload
+    {
+        SHTG J 6
+        SHTG K 6 A_PlaySound("DSRLDSHTG")
+        SHTG L 12
+        wait 30;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   CHAINGUN
+// ──────────────────────────────────────────────────────────────
+
+actor Chaingun
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "ChaingunAmmo";
+        ammoamount     1;
+        clipamount     20;
+        firespeed      4;
+        recoilamount   120;
+        selectpriority 30;
+    }
+
+    state Ready
+    {
+        CHGN ABCDEF 2
+        loop;
+    }
+
+    state Fire
+    {
+        CHGN G 2 A_FireBullet(8, 6, 768)
+        A_PlaySound("DSCHAING")
+        A_GunRecoil(120)
+        if clipamount > 0 { clipamount--; }
+        else { ammoamount--; }
+        wait 4;
+        goto Ready;
+    }
+
+    state Reload
+    {
+        CHGN HIJKLM 3 A_PlaySound("DSRLDCHNG")
+        clipamount = 20;
+        wait 36;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   RPG
+// ──────────────────────────────────────────────────────────────
+
+actor RPG
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "RPGAmmo";
+        ammoamount     1;
+        firespeed      32;
+        recoilamount   400;
+        selectpriority 50;
+    }
+
+    state Ready
+    {
+        RPG ABCDEF 3
+        loop;
+    }
+
+    state Fire
+    {
+        RPG G 6 A_FacePlayer(0)
+        RPG H 8 A_SpawnProjectile("RPGRocket", 0, 0, 64, 100, 0)
+        A_PlaySound("DSRPGFIRE")
+        A_GunRecoil(400)
+        shakeview 512, 1024;
+        wait 32;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   SHRINKER
+// ──────────────────────────────────────────────────────────────
+
+actor Shrinker
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "ShrinkerAmmo";
+        ammoamount     1;
+        firespeed      20;
+        recoilamount   200;
+        selectpriority 60;
+    }
+
+    state Ready
+    {
+        SHRK ABCDE 3
+        loop;
+    }
+
+    state Fire
+    {
+        SHRK F 5 A_FacePlayer(0)
+        SHRK G 8 A_SpawnProjectile("ShrinkRay", 0, 0, 1024, 30, SHRINK_FLAG)
+        A_PlaySound("DSSHRIKFIR")
+        A_GunRecoil(200)
+        wait 20;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   DEVASTATOR   (double-barrel chaingun)
+// ──────────────────────────────────────────────────────────────
+
+actor Devastator
+    inherits Chaingun
+{
+    property
+    {
+        ammotype       "DevastatorAmmo";
+        clipamount     40;
+        firespeed      3;
+        recoilamount   150;
+        selectpriority 70;
+    }
+
+    state Fire
+    {
+        DEV G 2
+        repeat 2  // dual barrels
+        {
+            A_FireBullet(12, 8, 1024)
+        }
+        A_PlaySound("DSDEVFIRE")
+        A_GunRecoil(150)
+        if clipamount > 0 { clipamount -= 2; }
+        else { ammoamount -= 2; }
+        wait 3;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   TRIPBOMB   (placeable explosive)
+// ──────────────────────────────────────────────────────────────
+
+actor Tripbomb
+    inherits WeaponBase
+{
+    property
+    {
+        ammotype       "TripBombAmmo";
+        ammoamount     1;
+        selectpriority 65;
+    }
+
+    state Ready
+    {
+        TRIP ABC 4
+        loop;
+    }
+
+    state Fire
+    {
+        TRIP D 6 A_PlaySound("DSTRIPB")
+        A_SpawnActor("TripBombActor", 0, 0, 0, statnum_tripbomb, 0)
+        ammoamount--;
+        wait 16;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   FREEZER
+// ──────────────────────────────────────────────────────────────
+
+actor Freezer
+    inherits Shrinker
+{
+    property
+    {
+        ammotype       "FreezerAmmo";
+        selectpriority 80;
+    }
+
+    state Fire
+    {
+        FRZR F 5 A_FacePlayer(0)
+        FRZR G 8 A_SpawnProjectile("FreezerRay", 0, 0, 1024, 50, FREEZE_FLAG)
+        A_PlaySound("DSFRZRFIR")
+        A_GunRecoil(200)
+        wait 20;
+        goto Ready;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   Helper Functions (shared)
+// ──────────────────────────────────────────────────────────────
+
+function A_FireBullet(damage, spread, range)
+{
+    A_FireProjectile("Bullet", random(-spread,spread), random(-spread,spread), range, damage, 0);
+}
+
+function A_MeleeAttack(damage, range, hitSound, canTrip = false)
+{
+    if A_CheckHit(range)
+    {
+        A_PlaySound(hitSound);
+        A_DamageEnemy(damage);
+        if canTrip { A_KnockbackEnemy(200); }
+    }
+}
+
+function A_SpawnProjectile(projType, angOffset, velOffset, range, damage, flags)
+{
+    spawnactor projType angOffset velOffset range damage flags;
+}

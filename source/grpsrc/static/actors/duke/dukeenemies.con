@@ -1,0 +1,253 @@
+// dukeenemies.con
+// Weapon / attack behaviors for various Duke Nukem 3D enemies
+// Written in hypothetical CONScript style (2025–2026 era fork fantasy)
+
+
+// ──────────────────────────────────────────────────────────────
+//   P I G   C O P
+// ──────────────────────────────────────────────────────────────
+
+actor PigCop
+    inherits EnemyBase
+{
+    property
+    {
+        health          50;
+        painthreshold   20;
+        scale           1.0;
+        speed           120;
+        maxtics         48;
+        clipdist        32;
+    }
+
+    state Spawn
+    {
+        PIGC A -1
+        stop;
+    }
+
+    state See
+    {
+        PIGC AB 4 A_ChasePlayer(80, 0)
+        loop;
+    }
+
+    state Attack
+    {
+        PIGC C 4 A_FacePlayer(16)
+        PIGC D 10 A_ShootPistol(10, 8, 32)
+        PIGC C 6
+        goto See;
+    }
+
+    state Pain
+    {
+        PIGC E 8 A_PlaySound("DSPL_PAIN")
+        goto See;
+    }
+
+    state Death
+    {
+        PIGC F 8 A_PlaySound("DSPIGDIE")
+        PIGC GHIJK 6
+        PIGC L -1
+        A_SpawnActor("PigCopCorpse", 0, 0, 0, 0, 0)
+        stop;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   LIZTROOP   (basic shotgun soldier)
+// ──────────────────────────────────────────────────────────────
+
+actor LizTroop
+    inherits EnemyBase
+{
+    property
+    {
+        health          40;
+        painthreshold   15;
+        scale           0.9;
+        speed           140;
+    }
+
+    state Spawn
+    {
+        LIZT A -1
+        stop;
+    }
+
+    state See
+    {
+        LIZT ABCDEF 4 A_ChasePlayer(100, 16)
+        loop;
+    }
+
+    state Attack
+    {
+        LIZT G 4 A_FacePlayer(24)
+        LIZT H 12 A_ShootShotgun(12, 12, 40)   // spread + damage
+        LIZT G 8
+        randomjump 0.4 Attack    // sometimes double-tap
+        goto See;
+    }
+
+    state Pain
+    {
+        LIZT I 6 A_PlaySound("DSLIZPAIN")
+        goto See;
+    }
+
+    state Death
+    {
+        LIZT J 8 A_PlaySound("DSLIZDIE")
+        LIZT KLMNO 6
+        LIZT P -1
+        stop;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   COMMANDER   (with chaingun)
+// ──────────────────────────────────────────────────────────────
+
+actor Commander
+    inherits EnemyBase
+{
+    property
+    {
+        health          120;
+        painthreshold   30;
+        scale           1.05;
+        speed           110;
+        maxtics         64;
+    }
+
+    state Spawn
+    {
+        COMM A -1
+        stop;
+    }
+
+    state See
+    {
+        COMM ABCD 5 A_ChasePlayer(90, 24)
+        loop;
+    }
+
+    state Attack
+    {
+        COMM E 4 A_FacePlayer(32)
+        COMM F 3
+        repeat 8
+        {
+            COMM G 2 A_ShootChaingun(6, 6, 48)
+            A_PlaySoundIfNotPlaying("DSCHAING")
+        }
+        COMM E 10
+        randomjump 0.65 Attack   // very trigger-happy
+        goto See;
+    }
+
+    state Pain
+    {
+        COMM H 6 A_PlaySound("DSCOMPAIN")
+        goto See;
+    }
+
+    state Death
+    {
+        COMM I 8 A_PlaySound("DSCOMDIE")
+        COMM JKLMN 6
+        COMM O -1
+        A_SpawnGibs(2)
+        stop;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   OCTABRAIN   (with shrinker attack)
+// ──────────────────────────────────────────────────────────────
+
+actor Octabrain
+    inherits FlyingEnemyBase
+{
+    property
+    {
+        health          175;
+        painthreshold   40;
+        scale           0.85;
+        speed           180;
+        flyheight       40;
+    }
+
+    state Spawn
+    {
+        OCTA A -1
+        stop;
+    }
+
+    state See
+    {
+        OCTA ABC 5 A_ChasePlayerFlying(140, 32)
+        loop;
+    }
+
+    state Attack
+    {
+        OCTA D 4 A_FacePlayer(40)
+        OCTA E 14 A_FireShrinkerRay(160, 0.4)   // chance to shrink player
+        OCTA D 10
+        goto See;
+    }
+
+    state Pain
+    {
+        OCTA F 8 A_PlaySound("DSOCTPAIN")
+        goto See;
+    }
+
+    state Death
+    {
+        OCTA G 6 A_PlaySound("DSOCTDIE")
+        OCTA HIJKLM 5
+        OCTA N -1
+        A_SpawnGibs(3)
+        stop;
+    }
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//   Generic weapon helper functions (used above)
+// ──────────────────────────────────────────────────────────────
+
+function A_ShootPistol(damage, spread, range)
+{
+    A_FacePlayer(spread*2);
+    A_FireProjectile("PistolBullet", spread, spread, range, damage, 0);
+}
+
+function A_ShootShotgun(damage, spread, range)
+{
+    repeat 7
+    {
+        A_FireProjectile("ShotgunPellet", random(-spread,spread), random(-spread,spread), range, damage, 0);
+    }
+}
+
+function A_ShootChaingun(damage, spread, range)
+{
+    A_FireProjectile("ChaingunBullet", random(-spread,spread), random(-spread,spread), range, damage, 0);
+}
+
+function A_FireShrinkerRay(damage, shrinkChance)
+{
+    if randomf() < shrinkChance
+        A_FireProjectile("ShrinkerRay", 0, 0, 1024, damage, PROJECTILE_SHRINK);
+    else
+        A_FireProjectile("ShrinkerRay", 0, 0, 1024, damage, 0);
+}
